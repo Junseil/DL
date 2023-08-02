@@ -6,17 +6,8 @@ htmlData = urllib.request.urlopen(url)
 bs = BeautifulSoup(htmlData, 'lxml')
 
 title_list = bs.findAll('a', 'title')
-for title in title_list:
-    print(title.getText())
-
 review_list = bs.findAll('div', 'text show-more__control')
-for content in review_list:
-    print(content.getText() + '\n')
-    
 score_list = bs.findAll('span', 'rating-other-user-rating')
-for score in score_list:
-    print(score.span.getText())
-    
     
 import re
 
@@ -35,3 +26,14 @@ def clean_str(string):
     string = re.sub(r"\?", " \? ", string)
     string = re.sub(r"\s{2,}", " ", string)
     return string.strip().lower()
+
+with open('./review.txt', 'w', encoding='UTF-8') as f:
+    for i in range(len(title_list)):
+        line = clean_str(title_list[i].getText()) + ' ' + clean_str(review_list[i].getText()) + '\n'
+        f.write(line)
+
+with open('./score.txt', 'w', encoding='UTF-8') as f:
+    for i in range(len(score_list)):
+        line = score_list[i].span.getText() + '\n'
+        f.write(line)
+        
