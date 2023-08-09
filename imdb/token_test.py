@@ -1,6 +1,8 @@
 import nltk
+from nltk.corpus import stopwords
 
 nltk.download('punkt')
+nltk.download('stopwords')
 
 sentence = '''
 I have a dream
@@ -16,6 +18,12 @@ text = nltk.Text(tokens)
 for token in text.vocab():
     print(token, text.vocab()[token])
 
-print(text.vocab())
+# print(text.vocab())
 # text.plot()
+# print(text.count('my'))
 
+stop = set(stopwords.words('english'))
+tokens = [t for t in tokens if t not in stop]
+
+print(tokens)
+print('this' in stop)
