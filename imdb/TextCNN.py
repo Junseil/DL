@@ -52,3 +52,22 @@ def load_dataset(dictionary, dev_ratio=None, using_vocab=None):
         return dataset, dev_dataset
     else:
         return dataset
+
+def tokenize(text, max_length):
+    text = text.lower()
+    tokens = nltk.word_tokenize(text)
+    tokens = tokens[:max_length]
+    tokens.extend(['<pad>']*(max_length-len(tokens)))
+    return tokens
+
+def make_vocab(text, vocab_size):
+    counts = collections.Counter()
+    for tokens in text:
+        for token in tokens:
+            counts[token] += 1
+            
+    _, max_count = counts.most_common(1)[0]
+    counts['<pad>'] += max_count + 2
+    counts['<unk>'] = max_count + 1
+    vocab = Vocab(collections.OrderedDict(counts.most_common(vocab_size)))
+    return vocab
