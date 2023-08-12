@@ -71,3 +71,53 @@ def make_vocab(text, vocab_size):
     counts['<unk>'] = max_count + 1
     vocab = Vocab(collections.OrderedDict(counts.most_common(vocab_size)))
     return vocab
+
+
+class TextCNN(nn.Module):
+    def __init__(self, num_classes, vocab_size, embedding_dim, filter_sizes, filter_counts, dropout_rate):
+        super().__init__()
+
+        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+        layers = []
+
+        for size, count in zip(filter_sizes, filter_counts):
+            layers.append(nn.Conv1d(in_channels=embedding_dim, out_channels=count,
+                                    kernel_size=size, padding=size-1))
+            
+        self.conv = nn.ModuleList(layers)
+        self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc = nn.Linear(in_features=sum(filter_counts), out_features=num_classes)
+
+    def forward(self, x):
+        out = self.embedding(x) 
+        out.transpose_(1, 2)
+
+        features = []
+
+        for layer in self.conv:
+            feature = layer(out)
+            feature, _ = feature.max(dim=2)
+            features.append(feature)
+
+        out = torch.cat(features, dim=1)
+        out = self.relu(out)
+        out = self.fc(out)
+
+        return out
+
+def evaluate(model, data_loader):
+    with torch.no_grad():
+        model.eval()
+        num_corrects = 0
+        num_total = 0
+        for label, text in data_loader:
+            label = label.to(device)
+            text = text.to(device)
+
+            output = model(text)
+            predictions = output.argmax(dim=-1)
+            num_corrects += (predictions == label).sum().item()
+            num_total += text.size(0)
+
+    return num_corrects/num_total
