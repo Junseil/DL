@@ -121,3 +121,64 @@ def evaluate(model, data_loader):
             num_total += text.size(0)
 
     return num_corrects/num_total
+
+
+device = torch.device('cuda')
+num_epochs = 5
+batch_size = 50
+num_classes = 2
+max_length = 256
+vocab_size = 50000
+embedding_dim = 300
+filter_sizes = (3, 4, 5)
+filter_counts = (100, 100, 100)
+dropout_rate = 0.0
+learning_rate = 0.001
+weight_decay = 1e-4
+evaluate_per_steps = 100
+
+train_dataset, dev_dataset = load_dataset('data/train', dev_ratio=0.1)
+test_dataset = load_dataset('data/test', using_vocab=train_dataset.get_vocab())
+
+train_loader = DataLoader(train_dataset, batch_size, shuffle=True, num_workers=8)
+dev_loader = DataLoader(dev_dataset, batch_size*4, num_workers=8)
+test_loader = DataLoader(test_dataset, batch_size*4, num_workers=8)
+
+model = TextCNN(num_classes, vocab_size, embedding_dim, filter_sizes, filter_counts, dropout_rate)
+model.to(device)
+
+optimizer = optim.Adam(model.parameters(), learning_rate, weight_decay=weight_decay)
+criterion = nn.CrossEntropyLoss()
+
+steps = 0
+max_dev_accuracy = 0.0
+
+for epoch in tqdm.trange(num_epochs):
+    progress = tqdm.tqdm(train_loader)
+    for label, text in progress:
+        model.train()
+        steps += 1
+        label = label.to(device)
+        text = text.to(device)
+
+        output = model(text)
+
+        loss = criterion(output, label)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        progress.set_description(f'train loss: {loss.item():.4f}')
+
+        if steps % evaluate_per_steps == 0:
+            print("***** evaluating on the dev set *****")
+            dev_accuracy = evaluate(model, dev_loader)
+            print(f'dev.accuracy: {dev_accuracy:.4f}')
+            if dev_accuracy > max_dev_accuracy:
+                print('achieve dev-best accuracy. saving.')
+                torch.save(model.state_dict(), 'best_weight.pt')
+
+print('***** evaluating dev-best on the test set *****')
+model.load_state_dict(torch.load('best_weight.pt'))
+test_accuracy = evaluate(model, test_loader)
+print(f'test accuracy: {test_accuracy}')
